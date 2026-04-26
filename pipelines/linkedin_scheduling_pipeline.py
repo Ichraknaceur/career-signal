@@ -22,13 +22,16 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import date
 
 from agents.linkedin_content_agent import LinkedInContentAgent
 from tools.scheduler_tools import (
     ScheduledPost,
     add_posts,
+    build_background_prompt,
     compute_scheduled_dates,
     get_published_medium_articles,
+    load_prompt_profile,
 )
 
 logger = logging.getLogger(__name__)
@@ -71,6 +74,9 @@ class LinkedInSchedulingPipeline:
         nb_weeks: int = 2,
         context: str = "",
         language: str = "English",
+        start_date: date | None = None,
+        publish_times: dict[str, str] | None = None,
+        prompt_profile: dict | None = None,
         callback: Callable[[str], None] | None = None,
     ) -> LinkedInSchedulingResult:
         """
@@ -97,9 +103,14 @@ class LinkedInSchedulingPipeline:
         log(f"🚀 LinkedIn Scheduling Pipeline démarré — {nb_weeks} semaine(s)")
 
         # Calculer les slots de publication
-        slots = compute_scheduled_dates(nb_weeks)
+        slots = compute_scheduled_dates(
+            nb_weeks=nb_weeks,
+            start_date=start_date,
+            publish_times=publish_times,
+        )
         total_slots = len(slots)
         log(f"📅 {total_slots} posts à générer ({nb_weeks} semaines × 3 jours)")
+        active_prompt_profile = prompt_profile or load_prompt_profile()
 
         # Charger les articles Medium publiés (pour promo_medium)
         medium_articles = get_published_medium_articles()
@@ -114,8 +125,9 @@ class LinkedInSchedulingPipeline:
             day = slot["day"]
             week = slot["week"]
             sdate = slot["date"]
+            stime = slot["time"]
 
-            log(f"\n[{i}/{total_slots}] Semaine {week} — {day} ({pillar}) — {sdate}")
+            log(f"\n[{i}/{total_slots}] Semaine {week} — {day} ({pillar}) — {sdate} {stime}")
 
             # Sélectionner l'article Medium pour le pillier promo_medium
             medium_article = None
@@ -129,11 +141,13 @@ class LinkedInSchedulingPipeline:
                     day_of_week=day,
                     week_number=week,
                     scheduled_date=sdate,
+                    scheduled_time=stime,
                     niche=niche,
                     audience=audience,
                     context=context,
                     language=language,
                     medium_article=medium_article,
+                    background_prompt=build_background_prompt(pillar, active_prompt_profile),
                 )
 
                 if post:

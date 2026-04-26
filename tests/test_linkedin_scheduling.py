@@ -56,6 +56,7 @@ class TestLinkedInContentAgent:
             "day_of_week": "monday",
             "week_number": 1,
             "scheduled_date": "2026-04-27",
+            "scheduled_time": "08:30",
             "content": "Le RAG hybride change tout pour la précision des LLMs.\n\nVoici pourquoi...",
             "hashtags": ["#ai", "#rag", "#llm"],
             "medium_article_url": None,
@@ -83,6 +84,7 @@ class TestLinkedInContentAgent:
         assert post.pillar == "expertise_ia"
         assert post.day_of_week == "monday"
         assert post.week_number == 1
+        assert post.scheduled_time == "08:30"
         assert post.status == "draft"
         assert len(post.content) > 0
         assert len(post.hashtags) <= 5
@@ -139,6 +141,7 @@ class TestLinkedInContentAgent:
             "day_of_week": "friday",
             "week_number": 1,
             "scheduled_date": "2026-05-01",
+            "scheduled_time": "17:45",
             "content": "Mon article sur le RAG hybride est sorti !",
             "hashtags": ["#ai", "#medium"],
             "medium_article_url": "https://medium.com/@test/rag-hybride",
@@ -169,6 +172,7 @@ class TestLinkedInContentAgent:
         )
 
         assert post is not None
+        assert post.scheduled_time == "17:45"
         assert post.medium_article_url == "https://medium.com/@test/rag-hybride"
         assert post.medium_article_title is not None
 

@@ -16,6 +16,8 @@ import os
 import sys
 import threading
 import time
+from datetime import date
+from datetime import time as time_value
 
 # ── Ajouter la racine du projet au path (même fix que app.py) ────────────────
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -33,18 +35,18 @@ st.set_page_config(
 from core.client import clear_provider_cache  # noqa: E402
 from pipelines.linkedin_scheduling_pipeline import LinkedInSchedulingPipeline  # noqa: E402
 from tools.scheduler_tools import (  # noqa: E402
+    DEFAULT_PUBLISH_TIMES,
     PILLAR_LABELS,
     ScheduledPost,
     delete_post,
     get_weeks_summary,
     load_posts,
+    load_prompt_profile,
+    save_prompt_profile,
     update_post_content,
+    update_post_schedule,
     update_post_status,
 )
-
-# ── Constantes ────────────────────────────────────────────────────────────────
-DAY_ORDER = ["monday", "wednesday", "friday"]
-DAY_LABELS = {"monday": "🟢 Lundi", "wednesday": "🔵 Mercredi", "friday": "🟣 Vendredi"}
 
 STATUS_BADGE = {
     "draft": "🟡 Draft",
@@ -77,6 +79,7 @@ def _badge(status: str) -> str:
 
 
 def _init_state() -> None:
+    prompt_profile = load_prompt_profile()
     defaults = {
         "li_page": "input",
         "li_logs": [],
@@ -86,9 +89,19 @@ def _init_state() -> None:
         "li_nb_weeks": 2,
         "li_context": "",
         "li_language": "English",
+        "li_start_date": date.today(),
+        "li_publish_time_monday": DEFAULT_PUBLISH_TIMES["monday"],
+        "li_publish_time_wednesday": DEFAULT_PUBLISH_TIMES["wednesday"],
+        "li_publish_time_friday": DEFAULT_PUBLISH_TIMES["friday"],
+        "li_prompt_global": prompt_profile["global_prompt"],
+        "li_prompt_voice": prompt_profile["voice_and_tone"],
+        "li_prompt_cta": prompt_profile["cta_style"],
+        "li_prompt_expertise_ia": prompt_profile["pillar_prompts"]["expertise_ia"],
+        "li_prompt_projets": prompt_profile["pillar_prompts"]["projets"],
+        "li_prompt_promo_medium": prompt_profile["pillar_prompts"]["promo_medium"],
         # Credentials partagés avec page 03 via session_state
-        "li_email": "",
-        "li_password": "",
+        "li_email": os.getenv("LINKEDIN_EMAIL", ""),
+        "li_password": os.getenv("LINKEDIN_PASSWORD", ""),
         # Publication en cours
         "li_pub_running": False,
         "li_pub_logs": [],
@@ -97,6 +110,31 @@ def _init_state() -> None:
     for k, v in defaults.items():
         if k not in st.session_state:
             st.session_state[k] = v
+
+
+def _format_day_label(day_name: str) -> str:
+    return {
+        "monday": "Lundi",
+        "tuesday": "Mardi",
+        "wednesday": "Mercredi",
+        "thursday": "Jeudi",
+        "friday": "Vendredi",
+        "saturday": "Samedi",
+        "sunday": "Dimanche",
+    }.get(day_name.lower(), day_name.title())
+
+
+def _build_prompt_profile_from_state() -> dict:
+    return {
+        "global_prompt": st.session_state.li_prompt_global,
+        "voice_and_tone": st.session_state.li_prompt_voice,
+        "cta_style": st.session_state.li_prompt_cta,
+        "pillar_prompts": {
+            "expertise_ia": st.session_state.li_prompt_expertise_ia,
+            "projets": st.session_state.li_prompt_projets,
+            "promo_medium": st.session_state.li_prompt_promo_medium,
+        },
+    }
 
 
 # ── Publication via Playwright ────────────────────────────────────────────────
@@ -220,7 +258,7 @@ def render_post_card(post: ScheduledPost) -> None:
         # Header
         header_col, status_col = st.columns([2, 1])
         with header_col:
-            st.caption(f"{pillar_label} · 📆 {post.scheduled_date}")
+            st.caption(f"{pillar_label} · 📆 {post.scheduled_date} · 🕒 {post.scheduled_time}")
         with status_col:
             st.caption(status_badge)
 
@@ -230,8 +268,23 @@ def render_post_card(post: ScheduledPost) -> None:
                 f"📰 [{post.medium_article_title or 'Article Medium'}]({post.medium_article_url})"
             )
 
-        if post.status in ("draft", "rejected"):
+        if post.status != "published":
             # ── Éditeur inline ──────────────────────────────────────────────
+            sched_col1, sched_col2 = st.columns(2)
+            with sched_col1:
+                edited_date = st.date_input(
+                    "Date",
+                    value=date.fromisoformat(post.scheduled_date),
+                    key=f"date_{post.id}",
+                )
+            with sched_col2:
+                edited_time = st.time_input(
+                    "Heure",
+                    value=time_value.fromisoformat(post.scheduled_time),
+                    key=f"time_{post.id}",
+                    step=1800,
+                )
+
             edited_content = st.text_area(
                 "Contenu",
                 value=post.content,
@@ -257,75 +310,65 @@ def render_post_card(post: ScheduledPost) -> None:
             char_icon = "🔴" if char_count > 1300 else "🟢"
             st.caption(f"{char_icon} {char_count}/1300 caractères")
 
+            def _save_post_edits() -> None:
+                update_post_content(post.id, edited_content, hashtags_parsed)
+                update_post_schedule(
+                    post.id,
+                    edited_date.isoformat(),
+                    edited_time.strftime("%H:%M"),
+                )
+
             # Boutons action
-            btn_col1, btn_col2, btn_col3 = st.columns(3)
+            btn_col1, btn_col2, btn_col3, btn_col4 = st.columns(4)
             with btn_col1:
-                if st.button(
-                    "✅ Approuver",
-                    key=f"approve_{post.id}",
-                    use_container_width=True,
-                    type="primary",
-                ):
-                    if edited_content != post.content or hashtags_parsed != post.hashtags:
-                        update_post_content(post.id, edited_content, hashtags_parsed)
-                    update_post_status(post.id, "approved")
-                    st.rerun()
-
-            with btn_col2:
-                if st.button("❌ Rejeter", key=f"reject_{post.id}", use_container_width=True):
-                    update_post_status(post.id, "rejected")
-                    st.rerun()
-
-            with btn_col3:
                 if st.button("💾 Sauver", key=f"save_{post.id}", use_container_width=True):
-                    update_post_content(post.id, edited_content, hashtags_parsed)
+                    _save_post_edits()
                     st.success("Sauvegardé !")
                     st.rerun()
 
-        elif post.status == "approved":
-            # ── Vue readonly + bouton publier ───────────────────────────────
-            st.markdown(f"```\n{post.content}\n```")
-            if post.hashtags:
-                st.caption(" ".join(post.hashtags))
+            with btn_col2:
+                if post.status == "approved":
+                    if st.button(
+                        "🚀 Publier",
+                        key=f"publish_{post.id}",
+                        use_container_width=True,
+                        type="primary",
+                        disabled=(
+                            not bool(
+                                st.session_state.get("li_email")
+                                and st.session_state.get("li_password")
+                            )
+                            or st.session_state.li_pub_running
+                        ),
+                    ):
+                        _save_post_edits()
+                        refreshed_post = next((p for p in load_posts() if p.id == post.id), post)
+                        _trigger_publish(refreshed_post)
+                else:
+                    if st.button(
+                        "✅ Approuver",
+                        key=f"approve_{post.id}",
+                        use_container_width=True,
+                        type="primary",
+                    ):
+                        _save_post_edits()
+                        update_post_status(post.id, "approved")
+                        st.rerun()
 
-            has_creds = bool(
-                st.session_state.get("li_email") and st.session_state.get("li_password")
-            )
-            pub_running = st.session_state.li_pub_running
-
-            pub_col, edit_col, del_col = st.columns(3)
-            with pub_col:
-                pub_disabled = not has_creds or pub_running
-                pub_help = (
-                    "Renseigne tes credentials LinkedIn dans la sidebar"
-                    if not has_creds
-                    else (
-                        "Publication en cours…"
-                        if pub_running
-                        else "Publier sur LinkedIn via Playwright"
-                    )
-                )
-                if st.button(
-                    "🚀 Publier",
-                    key=f"publish_{post.id}",
-                    use_container_width=True,
-                    type="primary",
-                    disabled=pub_disabled,
-                    help=pub_help,
-                ):
-                    _trigger_publish(post)
-
-            with edit_col:
-                if st.button("✏️ Éditer", key=f"edit_{post.id}", use_container_width=True):
-                    update_post_status(post.id, "draft")
+            with btn_col3:
+                action_label = "↩️ Brouillon" if post.status == "rejected" else "❌ Rejeter"
+                target_status = "draft" if post.status == "rejected" else "rejected"
+                if st.button(action_label, key=f"status_{post.id}", use_container_width=True):
+                    _save_post_edits()
+                    update_post_status(post.id, target_status)
                     st.rerun()
 
-            with del_col:
+            with btn_col4:
                 if st.button("🗑️ Suppr.", key=f"del_{post.id}", use_container_width=True):
                     delete_post(post.id)
                     st.rerun()
 
-        elif post.status == "published":
+        else:
             # ── Vue publiée ────────────────────────────────────────────────
             st.markdown(f"```\n{post.content}\n```")
             if post.hashtags:
@@ -363,6 +406,7 @@ with st.sidebar:
     # ── Credentials LinkedIn (pour publication) ───────────────────────────────
     st.subheader("🔐 LinkedIn — Publication")
     st.caption("Requis pour publier les posts approuvés via Playwright.")
+    st.caption("Si `LINKEDIN_EMAIL` et `LINKEDIN_PASSWORD` sont présents dans `.env`, ils sont chargés automatiquement.")
 
     li_email_val = st.text_input(
         "Email LinkedIn",
@@ -459,6 +503,11 @@ if st.session_state.li_page == "input":
                 value=st.session_state.li_nb_weeks,
                 help="1 semaine = 3 posts (Lun/Mer/Ven). Max 4 semaines = 12 posts.",
             )
+            start_date_value = st.date_input(
+                "🗓️ Date de départ du calendrier",
+                value=st.session_state.li_start_date,
+                help="Le calendrier sera généré à partir de cette date de départ.",
+            )
             context = st.text_area(
                 "💡 Contexte libre (optionnel)",
                 placeholder=(
@@ -469,6 +518,66 @@ if st.session_state.li_page == "input":
                 height=150,
                 help="Donne des éléments concrets pour des posts plus authentiques.",
             )
+
+        with st.expander("🕒 Horaires de publication", expanded=False):
+            time_col1, time_col2, time_col3 = st.columns(3)
+            with time_col1:
+                monday_time = st.time_input(
+                    "Lundi",
+                    value=time_value.fromisoformat(st.session_state.li_publish_time_monday),
+                    step=1800,
+                )
+            with time_col2:
+                wednesday_time = st.time_input(
+                    "Mercredi",
+                    value=time_value.fromisoformat(st.session_state.li_publish_time_wednesday),
+                    step=1800,
+                )
+            with time_col3:
+                friday_time = st.time_input(
+                    "Vendredi",
+                    value=time_value.fromisoformat(st.session_state.li_publish_time_friday),
+                    step=1800,
+                )
+
+        with st.expander("🧠 Prompts utilisés en background", expanded=False):
+            prompt_global = st.text_area(
+                "Global prompt",
+                value=st.session_state.li_prompt_global,
+                height=90,
+                help="Règles globales appliquées à tous les posts générés.",
+            )
+            voice_prompt = st.text_area(
+                "Voice and tone",
+                value=st.session_state.li_prompt_voice,
+                height=90,
+                help="Style rédactionnel de fond utilisé par le générateur.",
+            )
+            cta_prompt = st.text_area(
+                "CTA style",
+                value=st.session_state.li_prompt_cta,
+                height=70,
+                help="Style d'appel à l'action appliqué à la fin des posts.",
+            )
+            pillar_col1, pillar_col2, pillar_col3 = st.columns(3)
+            with pillar_col1:
+                prompt_expertise = st.text_area(
+                    "Prompt pillar · expertise_ia",
+                    value=st.session_state.li_prompt_expertise_ia,
+                    height=180,
+                )
+            with pillar_col2:
+                prompt_projets = st.text_area(
+                    "Prompt pillar · projets",
+                    value=st.session_state.li_prompt_projets,
+                    height=180,
+                )
+            with pillar_col3:
+                prompt_promo = st.text_area(
+                    "Prompt pillar · promo_medium",
+                    value=st.session_state.li_prompt_promo_medium,
+                    height=180,
+                )
 
         st.caption(
             f"📊 **Récap** : {nb_weeks} semaine(s) → **{nb_weeks * 3} posts** à générer "
@@ -492,6 +601,17 @@ if st.session_state.li_page == "input":
             st.session_state.li_nb_weeks = nb_weeks
             st.session_state.li_context = context
             st.session_state.li_language = language
+            st.session_state.li_start_date = start_date_value
+            st.session_state.li_publish_time_monday = monday_time.strftime("%H:%M")
+            st.session_state.li_publish_time_wednesday = wednesday_time.strftime("%H:%M")
+            st.session_state.li_publish_time_friday = friday_time.strftime("%H:%M")
+            st.session_state.li_prompt_global = prompt_global
+            st.session_state.li_prompt_voice = voice_prompt
+            st.session_state.li_prompt_cta = cta_prompt
+            st.session_state.li_prompt_expertise_ia = prompt_expertise
+            st.session_state.li_prompt_projets = prompt_projets
+            st.session_state.li_prompt_promo_medium = prompt_promo
+            save_prompt_profile(_build_prompt_profile_from_state())
             st.session_state.li_logs = []
             st.session_state.li_result = None
             st.session_state.li_page = "running"
@@ -526,6 +646,15 @@ elif st.session_state.li_page == "running":
     _nb_weeks = st.session_state.li_nb_weeks
     _context = st.session_state.li_context
     _language = st.session_state.get("li_language", "English")
+    _start_date = st.session_state.get("li_start_date", date.today())
+    _publish_times = {
+        "monday": st.session_state.get("li_publish_time_monday", DEFAULT_PUBLISH_TIMES["monday"]),
+        "wednesday": st.session_state.get(
+            "li_publish_time_wednesday", DEFAULT_PUBLISH_TIMES["wednesday"]
+        ),
+        "friday": st.session_state.get("li_publish_time_friday", DEFAULT_PUBLISH_TIMES["friday"]),
+    }
+    _prompt_profile = _build_prompt_profile_from_state()
     _logs_ref = st.session_state.li_logs  # référence mutable partagée
 
     total_expected = _nb_weeks * 3
@@ -545,6 +674,9 @@ elif st.session_state.li_page == "running":
                 nb_weeks=_nb_weeks,
                 context=_context,
                 language=_language,
+                start_date=_start_date,
+                publish_times=_publish_times,
+                prompt_profile=_prompt_profile,
                 callback=on_log,
             )
         except Exception as e:
@@ -617,24 +749,23 @@ elif st.session_state.li_page == "calendar":
             help="Publie tous les posts approuvés un par un via Playwright",
         ):
             _bulk_publish(approved_posts)
+    with top_col4:
+        all_posts_preview = load_posts()
+        draft_n = sum(1 for p in all_posts_preview if p.status == "draft")
+        approved_n = sum(1 for p in all_posts_preview if p.status == "approved")
+        rejected_n = sum(1 for p in all_posts_preview if p.status == "rejected")
+        published_n = sum(1 for p in all_posts_preview if p.status == "published")
+        st.caption(
+            f"**Total : {len(all_posts_preview)} posts** · "
+            f"🟡 {draft_n} draft · ✅ {approved_n} approuvé · "
+            f"❌ {rejected_n} rejeté · 🚀 {published_n} publié"
+        )
 
     # Stats globales
     all_posts = load_posts()
     if not all_posts:
         st.info("Aucun post planifié. Lance une génération depuis le formulaire !")
         st.stop()
-
-    draft_n = sum(1 for p in all_posts if p.status == "draft")
-    approved_n = sum(1 for p in all_posts if p.status == "approved")
-    rejected_n = sum(1 for p in all_posts if p.status == "rejected")
-    published_n = sum(1 for p in all_posts if p.status == "published")
-
-    with top_col3:
-        st.caption(
-            f"**Total : {len(all_posts)} posts** · "
-            f"🟡 {draft_n} draft · ✅ {approved_n} approuvé · "
-            f"❌ {rejected_n} rejeté · 🚀 {published_n} publié"
-        )
 
     st.divider()
 
@@ -651,23 +782,18 @@ elif st.session_state.li_page == "calendar":
     for tab, week_num in zip(week_tabs, sorted_weeks, strict=False):
         with tab:
             week_posts: list[ScheduledPost] = weeks_summary[week_num]["posts"]
+            posts_by_date: dict[str, list[ScheduledPost]] = {}
+            for post in sorted(
+                week_posts,
+                key=lambda item: (item.scheduled_date, item.scheduled_time, item.created_at),
+            ):
+                posts_by_date.setdefault(post.scheduled_date, []).append(post)
 
-            # Grouper par jour
-            day_groups: dict[str, list[ScheduledPost]] = {d: [] for d in DAY_ORDER}
-            for p in week_posts:
-                if p.day_of_week in day_groups:
-                    day_groups[p.day_of_week].append(p)
-
-            col_mon, col_wed, col_fri = st.columns(3)
-            day_cols = {"monday": col_mon, "wednesday": col_wed, "friday": col_fri}
-
-            for day in DAY_ORDER:
-                with day_cols[day]:
-                    st.markdown(f"#### {DAY_LABELS[day]}")
-                    day_posts = day_groups[day]
-
-                    if not day_posts:
-                        st.caption("Aucun post pour ce jour")
-                    else:
-                        for post in day_posts:
-                            render_post_card(post)
+            for scheduled_date, day_posts in posts_by_date.items():
+                first_post = day_posts[0]
+                st.markdown(
+                    f"#### {_format_day_label(first_post.day_of_week)} · {scheduled_date} · "
+                    f"{len(day_posts)} post(s)"
+                )
+                for post in day_posts:
+                    render_post_card(post)

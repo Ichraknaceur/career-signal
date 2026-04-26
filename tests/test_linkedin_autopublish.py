@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 from pipelines.linkedin_autopublish_pipeline import LinkedInAutoPublishPipeline
 from tools.scheduler_tools import (
@@ -45,6 +45,24 @@ def test_get_due_approved_posts_filters_correctly(tmp_path, monkeypatch):
     due_posts = get_due_approved_posts(as_of=date(2026, 4, 24))
 
     assert [post.id for post in due_posts] == ["due-approved"]
+
+
+def test_get_due_approved_posts_respects_scheduled_time(tmp_path, monkeypatch):
+    import tools.scheduler_tools as st_mod
+
+    monkeypatch.setattr(st_mod, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(st_mod, "SCHEDULE_FILE", tmp_path / "schedule.json")
+    monkeypatch.setattr(st_mod, "MEDIUM_PUBLISHED_FILE", tmp_path / "medium_published.json")
+
+    morning_post = make_post("morning-post", "2026-04-24", "approved")
+    evening_post = make_post("evening-post", "2026-04-24", "approved")
+    morning_post.scheduled_time = "09:00"
+    evening_post.scheduled_time = "18:00"
+    save_posts([morning_post, evening_post])
+
+    due_posts = get_due_approved_posts(as_of=datetime(2026, 4, 24, 10, 30))
+
+    assert [post.id for post in due_posts] == ["morning-post"]
 
 
 def test_autopublish_marks_successful_posts_as_published(tmp_path, monkeypatch):

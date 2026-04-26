@@ -36,6 +36,7 @@ def _scheduled_post_to_response(post) -> ScheduledPostResponse:
         day_of_week=post.day_of_week,
         week_number=post.week_number,
         scheduled_date=post.scheduled_date,
+        scheduled_time=post.scheduled_time,
         content=post.content,
         hashtags=post.hashtags,
         status=post.status,

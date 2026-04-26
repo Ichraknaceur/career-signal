@@ -11,11 +11,12 @@ Couvre :
 from __future__ import annotations
 
 import uuid
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 
 from tools.scheduler_tools import (
+    DEFAULT_PUBLISH_TIMES,
     PILLAR_BY_DAY,
     ScheduledPost,
     add_posts,
@@ -29,6 +30,7 @@ from tools.scheduler_tools import (
     record_medium_publication,
     save_posts,
     update_post_content,
+    update_post_schedule,
     update_post_status,
 )
 
@@ -41,12 +43,23 @@ def make_post(
     status: str = "draft",
     content: str = "Test post content",
 ) -> ScheduledPost:
+    base_monday = date(2026, 4, 27)
+    day_offsets = {
+        "monday": 0,
+        "tuesday": 1,
+        "wednesday": 2,
+        "thursday": 3,
+        "friday": 4,
+        "saturday": 5,
+        "sunday": 6,
+    }
+    scheduled = base_monday + timedelta(weeks=week - 1, days=day_offsets.get(day, 0))
     return ScheduledPost(
         id=str(uuid.uuid4()),
         pillar=pillar,
         day_of_week=day,
         week_number=week,
-        scheduled_date="2026-04-27",
+        scheduled_date=scheduled.isoformat(),
         content=content,
         hashtags=["#ai", "#test"],
         status=status,
@@ -85,6 +98,7 @@ class TestScheduledPost:
             "day_of_week": "wednesday",
             "week_number": 1,
             "scheduled_date": "2026-04-29",
+            "scheduled_time": "14:45",
             "content": "Contenu du post",
             "hashtags": ["#ai", "#build", "#genai", "#ml", "#extra", "#toomany"],
             "medium_article_url": None,
@@ -92,6 +106,7 @@ class TestScheduledPost:
         }
         post = create_scheduled_post_from_tool_input(tool_input)
         assert post.pillar == "projets"
+        assert post.scheduled_time == "14:45"
         assert len(post.hashtags) <= 5  # max 5 hashtags
         assert post.status == "draft"
 
@@ -162,6 +177,16 @@ class TestCRUD:
         loaded = load_posts()
         assert loaded[0].content == "Nouveau contenu"
         assert loaded[0].hashtags == ["#new"]
+
+    def test_update_post_schedule(self, tmp_data_dir):
+        p = make_post(day="monday", week=1)
+        save_posts([p])
+
+        update_post_schedule(p.id, "2026-04-30", "16:15")
+        loaded = load_posts()
+        assert loaded[0].scheduled_date == "2026-04-30"
+        assert loaded[0].scheduled_time == "16:15"
+        assert loaded[0].day_of_week == "thursday"
 
     def test_delete_post(self, tmp_data_dir):
         p1 = make_post()
@@ -242,6 +267,18 @@ class TestComputeScheduledDates:
             next(s["date"] for s in slots if s["day"] == "wednesday")
         )
         assert (wednesday_date - monday_date).days == 2
+
+    def test_default_publish_times_are_included(self):
+        slots = compute_scheduled_dates(1)
+        assert (
+            next(s for s in slots if s["day"] == "monday")["time"]
+            == DEFAULT_PUBLISH_TIMES["monday"]
+        )
+
+    def test_custom_publish_times_are_respected(self):
+        slots = compute_scheduled_dates(1, publish_times={"friday": "19:15"})
+        friday_slot = next(s for s in slots if s["day"] == "friday")
+        assert friday_slot["time"] == "19:15"
 
 
 # ── Tests Medium Published Articles ─────────────────────────────────────────
