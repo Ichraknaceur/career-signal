@@ -1,0 +1,93 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = [
+    "agents*",
+    "app*",
+    "core*",
+    "domain*",
+    "observability*",
+    "orchestrator*",
+    "pipelines*",
+    "services*",
+    "storage*",
+    "tools*",
+    "ui*",
+]
+exclude = ["tests*", "data*"]
+
+[project]
+name = "career-signal"
+version = "0.1.0"
+description = "Multi-agent pipeline for AI content creation and publishing (LinkedIn + Medium)"
+requires-python = ">=3.11"
+dependencies = [
+    "anthropic>=0.40.0",
+    "openai>=1.30.0",
+    "python-dotenv>=1.0.0",
+    "pypdf>=4.0.0",           # Lecture PDF
+    "fastapi>=0.115.0",
+    "uvicorn>=0.30.0",
+
+    # Phase 1 — UI
+    "streamlit>=1.35.0",
+
+    # Phase 3 — LinkedIn Outreach (à installer manuellement : playwright install chromium)
+    "playwright>=1.44.0",
+
+    # Phase 4 — Veille IA (RSS + scraping)
+    "beautifulsoup4>=4.12.0",
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "httpx>=0.27.0",
+    "ruff>=0.4.0",
+    "mypy>=1.9.0",
+]
+
+phase1 = [
+    "anthropic>=0.40.0",
+    "openai>=1.30.0",
+    "python-dotenv>=1.0.0",
+    "pypdf>=4.0.0",
+    "streamlit>=1.35.0",
+]
+
+phase2 = [
+    "anthropic>=0.40.0",
+    "openai>=1.30.0",
+    "python-dotenv>=1.0.0",
+    "pypdf>=4.0.0",
+    "streamlit>=1.35.0",
+]
+
+[project.scripts]
+career-signal = "main:main"
+career-signal-autopublish = "autopublish:main"
+career-signal-db-init = "storage.init_db:main"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+log_cli = true
+log_cli_level = "INFO"

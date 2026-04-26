@@ -1,0 +1,79 @@
+[
+  {
+    "id": "cc8da2fe-7f88-4049-8a88-396d37e3ea67",
+    "name": "Towards Data Science",
+    "url": "https://towardsdatascience.com/feed",
+    "category": "Data/IA",
+    "active": true,
+    "rss": true,
+    "created_at": "2026-04-23T09:48:53.435907Z",
+    "last_fetched": "2026-04-23T10:12:48.392538Z",
+    "article_count": 8
+  },
+  {
+    "id": "c4f244e5-d898-41d6-a923-20d43f3717db",
+    "name": "The Batch (DeepLearning.AI)",
+    "url": "https://www.deeplearning.ai/the-batch/feed/",
+    "category": "LLM",
+    "active": true,
+    "rss": true,
+    "created_at": "2026-04-23T09:48:53.436893Z",
+    "last_fetched": null,
+    "article_count": 0
+  },
+  {
+    "id": "a2aeceeb-fb80-4a28-9571-05c1876d4da2",
+    "name": "Hugging Face Blog",
+    "url": "https://huggingface.co/blog/feed.xml",
+    "category": "LLM",
+    "active": true,
+    "rss": true,
+    "created_at": "2026-04-23T09:48:53.438181Z",
+    "last_fetched": "2026-04-23T10:12:52.814405Z",
+    "article_count": 8
+  },
+  {
+    "id": "244d3737-13c7-42c7-b5bf-27e511050aaf",
+    "name": "Google AI Blog",
+    "url": "https://blog.research.google/feeds/posts/default",
+    "category": "IA",
+    "active": true,
+    "rss": true,
+    "created_at": "2026-04-23T09:48:53.438969Z",
+    "last_fetched": "2026-04-23T10:12:59.758983Z",
+    "article_count": 8
+  },
+  {
+    "id": "109ea1f8-a4a4-405b-9741-c40340f07267",
+    "name": "OpenAI Blog",
+    "url": "https://openai.com/blog/rss.xml",
+    "category": "LLM",
+    "active": true,
+    "rss": true,
+    "created_at": "2026-04-23T09:48:53.439253Z",
+    "last_fetched": "2026-04-23T10:13:04.777037Z",
+    "article_count": 8
+  },
+  {
+    "id": "cfe0e32b-0997-4a96-8269-98ff3813e127",
+    "name": "LangChain Blog",
+    "url": "https://blog.langchain.dev/rss/",
+    "category": "RAG",
+    "active": true,
+    "rss": true,
+    "created_at": "2026-04-23T09:48:53.439422Z",
+    "last_fetched": null,
+    "article_count": 0
+  },
+  {
+    "id": "8a9784e9-7943-4e87-8e3b-d150977b5458",
+    "name": "Sebastian Raschka (AI newsletter)",
+    "url": "https://magazine.sebastianraschka.com/feed",
+    "category": "LLM",
+    "active": true,
+    "rss": true,
+    "created_at": "2026-04-23T09:48:53.439562Z",
+    "last_fetched": "2026-04-23T10:13:09.794654Z",
+    "article_count": 8
+  }
+]

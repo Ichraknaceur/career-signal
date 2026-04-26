@@ -1,0 +1,14 @@
+[theme]
+base            = "light"
+
+# Palette claire — tons neutres + accent indigo sobre
+primaryColor    = "#6366F1"      # Indigo doux (boutons, focus)
+backgroundColor = "#FFFFFF"      # Fond principal blanc
+secondaryBackgroundColor = "#F8F9FA"  # Sidebar et conteneurs légers
+textColor       = "#1A1A2E"      # Texte principal quasi-noir
+
+font            = "sans serif"
+
+[server]
+headless        = true
+enableCORS      = false
