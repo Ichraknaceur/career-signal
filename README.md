@@ -1,5 +1,18 @@
 # CareerSignal
 
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-API-009688?logo=fastapi&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-UI-FF4B4B?logo=streamlit&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-Database-003B57?logo=sqlite&logoColor=white)
+![Playwright](https://img.shields.io/badge/Playwright-Browser_Automation-2EAD33?logo=playwright&logoColor=white)
+![Anthropic](https://img.shields.io/badge/Anthropic-LLM-191919)
+![OpenAI](https://img.shields.io/badge/OpenAI-LLM-412991?logo=openai&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Containers-2496ED?logo=docker&logoColor=white)
+![Pytest](https://img.shields.io/badge/Pytest-Tests-0A9EDC?logo=pytest&logoColor=white)
+![Ruff](https://img.shields.io/badge/Ruff-Lint-FCC21B?logo=ruff&logoColor=111111)
+![MyPy](https://img.shields.io/badge/MyPy-Types-2A6DB2?logo=python&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-CI/CD-2088FF?logo=githubactions&logoColor=white)
+
 CareerSignal is a job-search operating system designed to help technical
 candidates build visibility, grow their network, and convert that momentum
 into real career opportunities.
@@ -137,15 +150,26 @@ career-signal/
 
 ## Tech Stack
 
-- Python 3.11
-- Streamlit
-- FastAPI
-- SQLite
-- Playwright
-- Anthropic / OpenAI
-- Docker and Docker Compose
-- Pytest, Ruff, MyPy
-- GitHub Actions
+### Application
+
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-Frontend-FF4B4B?logo=streamlit&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688?logo=fastapi&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-Storage-003B57?logo=sqlite&logoColor=white)
+
+### AI and Automation
+
+![Anthropic](https://img.shields.io/badge/Anthropic-Claude-191919)
+![OpenAI](https://img.shields.io/badge/OpenAI-GPT-412991?logo=openai&logoColor=white)
+![Playwright](https://img.shields.io/badge/Playwright-Automation-2EAD33?logo=playwright&logoColor=white)
+
+### DevOps and Quality
+
+![Docker](https://img.shields.io/badge/Docker-Containers-2496ED?logo=docker&logoColor=white)
+![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-CI/CD-2088FF?logo=githubactions&logoColor=white)
+![Pytest](https://img.shields.io/badge/Pytest-Testing-0A9EDC?logo=pytest&logoColor=white)
+![Ruff](https://img.shields.io/badge/Ruff-Linting-FCC21B?logo=ruff&logoColor=111111)
+![MyPy](https://img.shields.io/badge/MyPy-Type_Checking-2A6DB2?logo=python&logoColor=white)
 
 ## Quick Start
 
