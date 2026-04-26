@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
@@ -27,7 +27,7 @@ class InitDbResponse(BaseModel):
 class AutoPublishRunRequest(BaseModel):
     email: str | None = Field(default=None, description="Override LinkedIn email.")
     password: str | None = Field(default=None, description="Override LinkedIn password.")
-    as_of: date | None = Field(default=None, description="Date de reference ISO.")
+    as_of: date | datetime | None = Field(default=None, description="Date/heure de reference ISO.")
     headless: bool = Field(default=True, description="Execution Playwright headless.")
     max_posts: int | None = Field(default=None, ge=1, description="Nombre max de posts.")
 
@@ -49,6 +49,7 @@ class ScheduledPostResponse(BaseModel):
     day_of_week: str
     week_number: int
     scheduled_date: str
+    scheduled_time: str
     content: str
     hashtags: list[str]
     status: str

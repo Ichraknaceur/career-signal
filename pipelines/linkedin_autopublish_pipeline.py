@@ -11,7 +11,7 @@ import asyncio
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 from tools.linkedin_poster import publish_posts_with_session
 from tools.scheduler_tools import get_due_approved_posts, update_post_status
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class LinkedInAutoPublishResult:
-    checked_at: str = field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
+    checked_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     eligible_posts: int = 0
     published_posts: int = 0
     failed_posts: int = 0
@@ -49,7 +49,7 @@ class LinkedInAutoPublishPipeline:
         self,
         email: str,
         password: str,
-        as_of: date | None = None,
+        as_of: date | datetime | None = None,
         headless: bool = True,
         callback: Callable[[str], None] | None = None,
         max_posts: int | None = None,

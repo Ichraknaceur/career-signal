@@ -73,6 +73,8 @@ class LinkedInContentAgent(BaseAgent):
         )
         self._tools = [SCHEDULE_POST_TOOL]
         self._pending_post: ScheduledPost | None = None
+        self._current_scheduled_time = "09:00"
+        self._current_background_prompt = ""
 
     # ── Tool handler ─────────────────────────────────────────────────────────
     def handle_schedule_post(
@@ -82,6 +84,7 @@ class LinkedInContentAgent(BaseAgent):
         week_number: int,
         scheduled_date: str,
         content: str,
+        scheduled_time: str | None = None,
         hashtags: list | None = None,
         medium_article_url: str | None = None,
         medium_article_title: str | None = None,
@@ -92,6 +95,7 @@ class LinkedInContentAgent(BaseAgent):
             "day_of_week": day_of_week,
             "week_number": week_number,
             "scheduled_date": scheduled_date,
+            "scheduled_time": scheduled_time or self._current_scheduled_time,
             "content": content,
             "hashtags": hashtags or [],
             "medium_article_url": medium_article_url,
@@ -123,6 +127,8 @@ class LinkedInContentAgent(BaseAgent):
         context: str = "",
         language: str = "English",
         medium_article: dict | None = None,
+        scheduled_time: str = "09:00",
+        background_prompt: str = "",
     ) -> ScheduledPost | None:
         """
         Génère un seul post LinkedIn pour le slot donné.
@@ -141,6 +147,8 @@ class LinkedInContentAgent(BaseAgent):
             ScheduledPost si succès, None sinon.
         """
         self._pending_post = None
+        self._current_scheduled_time = scheduled_time
+        self._current_background_prompt = background_prompt
 
         # Construire le contexte Medium si pillier promo_medium
         medium_section = ""
@@ -161,6 +169,7 @@ Pillier : {pillar}
 Jour    : {day_of_week}
 Semaine : {week_number}
 Date    : {scheduled_date}
+Heure   : {scheduled_time}
 
 🌍 LANGUE : Écris le post ENTIÈREMENT en {language}. Hook, corps, CTA, tout en {language}.
 
@@ -170,8 +179,11 @@ Audience  : {audience}
 Contexte / idées à exploiter :
 {context if context else "Utilise ta créativité autour de la niche."}
 
+{background_prompt if background_prompt else ""}
+
 Après avoir généré le post au format ---POST--- / ---HASHTAGS--- / ---END---,
-appelle le tool `schedule_post` avec tous les paramètres remplis.
+appelle le tool `schedule_post` avec tous les paramètres remplis, y compris la date
+et l'heure de publication du slot.
 """
 
         messages = [{"role": "user", "content": user_content}]
